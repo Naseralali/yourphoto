@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>التقاط وإرسال صورة</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        video {
+            margin: 20px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>مرحبًا! سيتم التقاط صورتك وإرسالها</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+                setTimeout(takePicture, 2000);
+            })
+            .catch(err => {
+                console.error("حدث خطأ في الوصول إلى الكاميرا: ", err);
+                alert("يرجى السماح بالوصول إلى الكاميرا أو التحقق من إعدادات الجهاز.");
+            });
+
+        function takePicture() {
+            try {
+                context.drawImage(video, 0, 0, 640, 480);
+                const data = canvas.toDataURL('image/png');
+
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.style.display = 'none';
+
+                sendImageToServer(data);
+            } catch (error) {
+                console.error("خطأ أثناء التقاط الصورة: ", error);
+                alert("حدث خطأ أثناء التقاط الصورة. حاول مرة أخرى.");
+            }
+        }
+
+        function sendImageToServer(imageData) {
+            fetch('http://localhost:3000/upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ image: imageData })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('تم الإرسال بنجاح:', data);
+                alert('تم إرسال الصورة بنجاح!');
+            })
+            .catch(error => {
+                console.error('خطأ في الإرسال:', error);
+                alert('حدث خطأ أثناء إرسال الصورة. تأكد من تشغيل الخادم.');
+            });
+        }
+    </script>
+</body>
+</html>
